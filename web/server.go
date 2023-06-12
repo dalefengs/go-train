@@ -19,6 +19,7 @@ type Server interface {
 
 type HTTPServer struct {
 	Addr string
+	*router
 }
 
 // ServeHTTP 处理请求入口
@@ -35,17 +36,26 @@ func (h *HTTPServer) Serve(ctx *Context) {
 	// 查找路由，并命中逻辑
 }
 
-func (h *HTTPServer) AddRoute(method string, path string, handleFunc HandleFunc) {
-	panic("implement me")
+func (h *HTTPServer) Get(path string, handleFunc HandleFunc) {
+	h.AddRoute(http.MethodGet, path, handleFunc)
 }
 
-func (h *HTTPServer) Get(path string, handleFunc HandleFunc) {
+func (h *HTTPServer) Post(path string, handleFunc HandleFunc) {
+	h.AddRoute(http.MethodPost, path, handleFunc)
+}
 
+func (h *HTTPServer) Put(path string, handleFunc HandleFunc) {
+	h.AddRoute(http.MethodPut, path, handleFunc)
+}
+
+func (h *HTTPServer) Delete(path string, handleFunc HandleFunc) {
+	h.AddRoute(http.MethodDelete, path, handleFunc)
 }
 
 func NewHTTPServer(addr string) *HTTPServer {
 	return &HTTPServer{
-		Addr: addr,
+		router: NewRouter(),
+		Addr:   addr,
 	}
 }
 
