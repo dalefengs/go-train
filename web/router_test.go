@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var mockHandler HandleFunc = func(ctx Context) {}
+var mockHandler HandleFunc = func(ctx *Context) {}
 
 // TestRouter_AddRoute 测试注册路由树
 func TestRouter_AddRoute(t *testing.T) {

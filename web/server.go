@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type HandleFunc func(ctx Context)
+type HandleFunc func(ctx *Context)
 
 // 确保结构体一定实现了 Server 接口
 var _ Server = &HTTPServer{}
@@ -19,7 +19,7 @@ type Server interface {
 
 type HTTPServer struct {
 	Addr string
-	*router
+	router
 }
 
 // ServeHTTP 处理请求入口
@@ -34,8 +34,18 @@ func (h *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request
 
 func (h *HTTPServer) Serve(ctx *Context) {
 	// 查找路由，并命中逻辑
+	n, ok := h.findRoute(ctx.Req.Method, ctx.Req.URL.Path)
+	if !ok {
+		// 路由没有命中 404
+		ctx.Resp.WriteHeader(404)
+		ctx.Resp.Write([]byte("NOT FOUND"))
+		return
+	}
+	n.handler(ctx)
+
 }
 
+// Get 注册路由
 func (h *HTTPServer) Get(path string, handleFunc HandleFunc) {
 	h.AddRoute(http.MethodGet, path, handleFunc)
 }
