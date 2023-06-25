@@ -42,7 +42,6 @@ func (h *HTTPServer) Serve(ctx *Context) {
 		return
 	}
 	n.handler(ctx)
-
 }
 
 // Get 注册路由

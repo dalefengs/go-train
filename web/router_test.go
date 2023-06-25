@@ -28,6 +28,10 @@ func TestRouter_AddRoute(t *testing.T) {
 		},
 		{
 			method: http.MethodGet,
+			path:   "/user/*",
+		},
+		{
+			method: http.MethodGet,
 			path:   "/",
 		},
 		{
@@ -70,6 +74,10 @@ func TestRouter_AddRoute(t *testing.T) {
 						},
 					},
 				},
+				starChildren: &node{
+					path:    "*",
+					handler: mockHandler,
+				},
 			},
 			http.MethodPost: &node{
 				path: "/",
@@ -87,7 +95,7 @@ func TestRouter_AddRoute(t *testing.T) {
 			},
 		},
 	}
-	errMsg, ok := wantRouter.equal(r)
+	errMsg, ok := wantRouter.equal(&r)
 	assert.True(t, ok, errMsg)
 
 	r = NewRouter()

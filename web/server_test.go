@@ -10,5 +10,9 @@ func TestStart(t *testing.T) {
 		ctx.Resp.Write([]byte("home"))
 		return
 	})
+	s.Get("/userInfo/*", func(ctx *Context) {
+		ctx.Resp.Write([]byte((ctx.Req.URL.Path)))
+		return
+	})
 	s.Start()
 }

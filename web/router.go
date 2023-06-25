@@ -57,10 +57,13 @@ func (r *router) AddRoute(method string, path string, handleFunc HandleFunc) {
 	root.handler = handleFunc
 }
 
+// 路由节点
 type node struct {
 	path string
-	// 子节点的映射
+	// 子节点的映射 - 静态映射
 	children map[string]*node
+	// 通配符映射， 不允许 /user/*/home
+	starChildren *node
 	// 用户注册的业务逻辑
 	handler HandleFunc
 }
@@ -89,17 +92,26 @@ func (r *router) findRoute(method, path string) (*node, bool) {
 	return root, true
 }
 
-// 查找路由
+// childOf 查找路由,优先匹配静态匹配。
 func (n *node) childOf(path string) (*node, bool) {
 	if n.children == nil {
-		return nil, false
+		return n.starChildren, n.starChildren != nil
 	}
 	child, ok := n.children[path]
+	if !ok { // 静态匹配匹配失败，
+		return n.starChildren, n.starChildren != nil
+	}
 	return child, ok
 }
 
 // 没有找到则创建路由
 func (n *node) childOrCreate(seg string) *node {
+	if seg == "*" {
+		n.starChildren = &node{
+			path: seg,
+		}
+		return n.starChildren
+	}
 	if n.children == nil {
 		// 不存在就新建
 		n.children = map[string]*node{}
