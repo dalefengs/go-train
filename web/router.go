@@ -57,56 +57,81 @@ func (r *router) AddRoute(method string, path string, handleFunc HandleFunc) {
 	root.handler = handleFunc
 }
 
-// 路由节点
-type node struct {
-	path string
-	// 子节点的映射 - 静态映射
-	children map[string]*node
-	// 通配符映射， 不允许 /user/*/home
-	starChildren *node
-	// 用户注册的业务逻辑
-	handler HandleFunc
-}
-
 // 递归查找路由
-func (r *router) findRoute(method, path string) (*node, bool) {
+func (r *router) findRoute(method, path string) (*matchInfo, bool) {
 	root, ok := r.trees[method]
 	if !ok {
 		return nil, false
 	}
 	if path == "/" {
-		return root, true
+		return &matchInfo{
+			n: root,
+		}, true
 	}
 	path = strings.Trim(path, "/")
 	segs := strings.Split(path, "/")
+	var pathParams map[string]string
 	for _, seg := range segs {
-		child, found := root.childOf(seg)
+		child, paramChild, found := root.childOf(seg)
 		if !found {
 			return nil, false
+		}
+		// 命中了路径参数
+		if paramChild {
+			if pathParams == nil {
+				pathParams = make(map[string]string)
+			}
+			// path = :id  去掉冒号
+			pathParams[child.path[1:]] = seg
 		}
 		// 找到了继续深入
 		root = child
 	}
 	// 只返回 true 只代表我有这个节点，但不一定有 handlerFunc
 	// root.handler != nil 代表我既有节点，也有业务逻辑 handlerFunc
-	return root, true
+	m := &matchInfo{
+		n:          root,
+		pathParams: pathParams,
+	}
+	return m, true
 }
 
 // childOf 查找路由,优先匹配静态匹配。
-func (n *node) childOf(path string) (*node, bool) {
+// 子节点
+// 标记是否是路径参数
+// 标记是否命中
+func (n *node) childOf(path string) (*node, bool, bool) {
 	if n.children == nil {
-		return n.starChildren, n.starChildren != nil
+		if n.paramChildren != n {
+			return n.paramChildren, true, true
+		}
+		return n.starChildren, false, n.starChildren != nil
 	}
 	child, ok := n.children[path]
 	if !ok { // 静态匹配匹配失败，
-		return n.starChildren, n.starChildren != nil
+		if n.paramChildren != nil {
+			return n.paramChildren, true, true
+		}
+		return n.starChildren, false, n.starChildren != nil
 	}
-	return child, ok
+	return child, false, ok
 }
 
 // 没有找到则创建路由
 func (n *node) childOrCreate(seg string) *node {
+	if seg[0] == ':' {
+		if n.starChildren != nil {
+			panic("web：不允许同时注册路径参数和通配符匹配，已有通配符匹配")
+		}
+		n.paramChildren = &node{
+			path: seg,
+		}
+		return n.paramChildren
+	}
 	if seg == "*" {
+		if n.paramChildren != nil {
+			panic("web：不允许同时注册路径参数和通配符匹配, 已有路径参数")
+		}
 		n.starChildren = &node{
 			path: seg,
 		}
@@ -125,4 +150,24 @@ func (n *node) childOrCreate(seg string) *node {
 		n.children[seg] = res
 	}
 	return res
+}
+
+// 路由节点
+type node struct {
+	path string
+	// 子节点的映射 - 静态映射
+	children map[string]*node
+	// 通配符映射， 不允许 /user/*/home
+	starChildren *node
+
+	// 路径参数
+	paramChildren *node
+
+	// 用户注册的业务逻辑
+	handler HandleFunc
+}
+
+type matchInfo struct {
+	n          *node
+	pathParams map[string]string
 }

@@ -14,5 +14,9 @@ func TestStart(t *testing.T) {
 		ctx.Resp.Write([]byte((ctx.Req.URL.Path)))
 		return
 	})
+	s.Post("/name/:name", func(ctx *Context) {
+		ctx.Resp.Write([]byte((ctx.PathParams["name"])))
+		return
+	})
 	s.Start()
 }

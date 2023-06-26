@@ -232,8 +232,8 @@ func TestRouter_findRouter(t *testing.T) {
 			if !found {
 				return
 			}
-			msg, ok := tc.wantNode.equal(n)
-			assert.Equal(t, tc.wantNode.path, n.path)
+			msg, ok := tc.wantNode.equal(n.n)
+			assert.Equal(t, tc.wantNode.path, n.n.path)
 			assert.True(t, ok, msg)
 		})
 	}
