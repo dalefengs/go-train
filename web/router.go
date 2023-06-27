@@ -39,6 +39,7 @@ func (r *router) AddRoute(method string, path string, handleFunc HandleFunc) {
 			panic("路由重复注册")
 		}
 		root.handler = handleFunc
+		root.route = "/"
 		return
 	}
 	path = strings.Trim(path, "/") // 去掉左右 /
@@ -55,6 +56,7 @@ func (r *router) AddRoute(method string, path string, handleFunc HandleFunc) {
 		panic("路由重复注册")
 	}
 	root.handler = handleFunc
+	root.route = path
 }
 
 // 递归查找路由
@@ -102,14 +104,14 @@ func (r *router) findRoute(method, path string) (*matchInfo, bool) {
 // 标记是否命中
 func (n *node) childOf(path string) (*node, bool, bool) {
 	if n.children == nil {
-		if n.paramChildren != n {
+		if n.paramChildren != nil {
 			return n.paramChildren, true, true
 		}
 		return n.starChildren, false, n.starChildren != nil
 	}
 	child, ok := n.children[path]
 	if !ok { // 静态匹配匹配失败，
-		if n.paramChildren != nil {
+		if n.paramChildren != nil { // 匹配路径参数
 			return n.paramChildren, true, true
 		}
 		return n.starChildren, false, n.starChildren != nil
@@ -154,6 +156,8 @@ func (n *node) childOrCreate(seg string) *node {
 
 // 路由节点
 type node struct {
+	route string
+
 	path string
 	// 子节点的映射 - 静态映射
 	children map[string]*node

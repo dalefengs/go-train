@@ -15,6 +15,9 @@ type Context struct {
 
 	// 缓存路由参数， Form 有自带缓存
 	QueryValues url.Values
+
+	// 匹配命中的路由
+	MatchedRoute string
 }
 
 // ResponseJSON 响应 JSON 数据
@@ -23,9 +26,10 @@ func (c *Context) ResponseJSON(status int, val any) error {
 	if err != nil {
 		return err
 	}
-	c.Resp.WriteHeader(status)
+	if status != 200 {
+		c.Resp.WriteHeader(status)
+	}
 	c.Resp.Header().Set("Content-Type", "application/json")
-	c.Resp.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	_, err = c.Resp.Write(data)
 	return err
 }

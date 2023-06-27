@@ -20,6 +20,26 @@ type Server interface {
 type HTTPServer struct {
 	Addr string
 	router
+	Middlewares []Middleware
+}
+
+type HTTPServerOption func(server *HTTPServer)
+
+func NewHTTPServer(addr string, opts ...HTTPServerOption) *HTTPServer {
+	res := &HTTPServer{
+		router: NewRouter(),
+		Addr:   addr,
+	}
+	for _, opt := range opts {
+		opt(res)
+	}
+	return res
+}
+
+func ServerWithMiddleware(mdls ...Middleware) HTTPServerOption {
+	return func(server *HTTPServer) {
+		server.Middlewares = mdls
+	}
 }
 
 // ServeHTTP 处理请求入口
@@ -29,7 +49,13 @@ func (h *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request
 		Req:  request,
 		Resp: writer,
 	}
-	h.Serve(ctx)
+	// 从后往前回溯
+	// 把后一个作为前一个的 next 构造好链条
+	root := h.Serve
+	for i := len(h.Middlewares) - 1; i >= 0; i-- {
+		root = h.Middlewares[i](root)
+	}
+	root(ctx)
 }
 
 func (h *HTTPServer) Serve(ctx *Context) {
@@ -42,6 +68,7 @@ func (h *HTTPServer) Serve(ctx *Context) {
 		return
 	}
 	ctx.PathParams = info.pathParams
+	ctx.MatchedRoute = info.n.route
 	info.n.handler(ctx)
 }
 
@@ -60,13 +87,6 @@ func (h *HTTPServer) Put(path string, handleFunc HandleFunc) {
 
 func (h *HTTPServer) Delete(path string, handleFunc HandleFunc) {
 	h.AddRoute(http.MethodDelete, path, handleFunc)
-}
-
-func NewHTTPServer(addr string) *HTTPServer {
-	return &HTTPServer{
-		router: NewRouter(),
-		Addr:   addr,
-	}
 }
 
 func (h *HTTPServer) Start() error {
