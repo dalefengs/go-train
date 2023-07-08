@@ -2,13 +2,14 @@ package orm
 
 import (
 	"context"
-	"reflect"
+	"go-train/orm/internal/errs"
 	"strings"
 )
 
 type Selector[T any] struct {
 	table string
 	where []Predicate
+	model *model
 	sb    *strings.Builder
 	args  []any
 }
@@ -25,14 +26,18 @@ func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
 
 func (s *Selector[T]) Build() (*Query, error) {
 	s.sb = &strings.Builder{}
+
+	m, err := parseModel(new(T))
+	if err != nil {
+		return nil, err
+	}
+	s.model = m
 	sb := s.sb
 	sb.WriteString("SELECT * FROM ")
 	// 没有调用 FROM 就 使用反射获取表名称
 	if s.table == "" {
-		var t T
-		typ := reflect.TypeOf(t)
 		sb.WriteByte('`')
-		sb.WriteString(typ.Name())
+		sb.WriteString(s.model.tableName)
 		sb.WriteByte('`')
 
 	} else {
@@ -90,13 +95,18 @@ func (s *Selector[T]) buildExpression(expr Expression) error {
 		}
 	case Column:
 		s.sb.WriteByte('`')
-		s.sb.WriteString(exp.name)
+		fd, ok := s.model.fields[exp.name]
+		if !ok {
+			return errs.NewErrUnkonownField(exp.name)
+		}
+		s.sb.WriteString(fd.colName)
 		s.sb.WriteByte('`')
 	case value:
 		s.sb.WriteString(" ?")
 		s.AddArg(exp.val)
 	// 剩下不考虑
 	default:
+		//return errs.NewErrUnsupportedExpression(expr)
 		return nil
 
 	}

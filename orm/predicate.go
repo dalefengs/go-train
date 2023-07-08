@@ -55,6 +55,7 @@ func (left Predicate) And(right Predicate) Predicate {
 		right: right,
 	}
 }
+
 func (left Predicate) Or(right Predicate) Predicate {
 	return Predicate{
 		left:  left,
