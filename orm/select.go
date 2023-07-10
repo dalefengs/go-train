@@ -12,6 +12,16 @@ type Selector[T any] struct {
 	model *model
 	sb    *strings.Builder
 	args  []any
+
+	db *DB
+}
+
+func NewSelector[T any](db *DB) *Selector[T] {
+	return &Selector[T]{
+		sb: &strings.Builder{},
+		db: db,
+	}
+
 }
 
 func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
@@ -26,8 +36,7 @@ func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
 
 func (s *Selector[T]) Build() (*Query, error) {
 	s.sb = &strings.Builder{}
-
-	m, err := parseModel(new(T))
+	m, err := s.db.r.get(new(T))
 	if err != nil {
 		return nil, err
 	}
