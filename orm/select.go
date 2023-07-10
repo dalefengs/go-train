@@ -7,21 +7,19 @@ import (
 )
 
 type Selector[T any] struct {
+	builder
 	table string
 	where []Predicate
-	model *model
-	sb    *strings.Builder
-	args  []any
-
-	db *DB
+	db    *DB
 }
 
 func NewSelector[T any](db *DB) *Selector[T] {
 	return &Selector[T]{
-		sb: &strings.Builder{},
+		builder: builder{
+			sb: &strings.Builder{},
+		},
 		db: db,
 	}
-
 }
 
 func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
@@ -36,6 +34,8 @@ func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
 
 func (s *Selector[T]) Build() (*Query, error) {
 	s.sb = &strings.Builder{}
+	var err error
+	s.db, err = NewDB()
 	m, err := s.db.r.get(new(T))
 	if err != nil {
 		return nil, err
@@ -54,11 +54,7 @@ func (s *Selector[T]) Build() (*Query, error) {
 	}
 	if len(s.where) > 0 {
 		sb.WriteString(" WHERE ")
-		p := s.where[0]
-		for i := 1; i < len(s.where); i++ {
-			p = p.And(s.where[i])
-		}
-		if err := s.buildExpression(p); err != nil {
+		if err := s.buildPredicates(s.where); err != nil {
 			return nil, err
 		}
 	}
