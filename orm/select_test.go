@@ -88,6 +88,6 @@ func TestSelector_Build(t *testing.T) {
 type TestModel struct {
 	Id        int
 	FirstName string
-	Age       int8
+	Age       int8 `orm:"column=age"`
 	LastName  *sql.NullString
 }
