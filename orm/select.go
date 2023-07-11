@@ -36,7 +36,7 @@ func (s *Selector[T]) Build() (*Query, error) {
 	s.sb = &strings.Builder{}
 	var err error
 	s.db, err = NewDB()
-	m, err := s.db.r.get(new(T))
+	m, err := s.db.r.Get(new(T))
 	if err != nil {
 		return nil, err
 	}

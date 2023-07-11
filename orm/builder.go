@@ -7,7 +7,7 @@ import (
 
 type builder struct {
 	sb    *strings.Builder
-	model *model
+	model *Model
 	args  []any
 }
 

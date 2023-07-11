@@ -1,6 +1,8 @@
 package orm
 
-import "reflect"
+import (
+	"sync"
+)
 
 type DBOption func(db *DB)
 
@@ -11,7 +13,7 @@ type DB struct {
 func NewDB(opts ...DBOption) (*DB, error) {
 	res := &DB{
 		r: &registry{
-			models: make(map[reflect.Type]*model, 64),
+			models: sync.Map{},
 		},
 	}
 	for _, opt := range opts {

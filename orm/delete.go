@@ -6,13 +6,13 @@ type Deleter[T any] struct {
 	builder
 	table string
 	where []Predicate
-	model *model
+	model *Model
 	db    *DB
 }
 
 func (d *Deleter[T]) Build() (*Query, error) {
 	d.sb = &strings.Builder{}
-	m, err := d.db.r.parseModel(new(T))
+	m, err := d.db.r.Register(new(T))
 	if err != nil {
 		return nil, err
 	}
