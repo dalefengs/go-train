@@ -19,13 +19,18 @@ type Registry interface {
 
 type Model struct {
 	tableName string
-	fields    map[string]*Field
+	// 字段名到字段的映射
+	fieldsMap map[string]*Field
+	// 列名到字段定义
+	columnMap map[string]*Field
 }
 
 type ModelOption func(m *Model) error
 
 type Field struct {
-	colName string // 列名
+	goName  string       // 字段名
+	colName string       // 列名
+	typ     reflect.Type // 字段类型
 }
 
 type registry struct {
@@ -64,6 +69,7 @@ func (r *registry) Register(entity any, opts ...ModelOption) (*Model, error) {
 	typElem := typ.Elem()
 	numFields := typElem.NumField()
 	fieldMap := make(map[string]*Field, numFields)
+	columnMap := make(map[string]*Field, numFields)
 	for i := 0; i < numFields; i++ {
 		fd := typElem.Field(i)
 		pair, err := r.parseTag(fd.Tag)
@@ -74,9 +80,13 @@ func (r *registry) Register(entity any, opts ...ModelOption) (*Model, error) {
 		if columnName == "" {
 			columnName = underscoreName(fd.Name)
 		}
-		fieldMap[fd.Name] = &Field{
+		fdMeta := &Field{
+			goName:  fd.Name,
 			colName: columnName,
+			typ:     fd.Type,
 		}
+		fieldMap[fd.Name] = fdMeta
+		columnMap[columnName] = fdMeta
 	}
 	var tableName string
 	// 断言，看看是否实现了 TableName 接口
@@ -87,7 +97,8 @@ func (r *registry) Register(entity any, opts ...ModelOption) (*Model, error) {
 	}
 	res := &Model{
 		tableName: tableName,
-		fields:    fieldMap,
+		fieldsMap: fieldMap,
+		columnMap: columnMap,
 	}
 
 	for _, opt := range opts {
@@ -110,9 +121,9 @@ func ModelWithTableName(tableName string) ModelOption {
 
 func ModelWithColumnName(field string, colName string) ModelOption {
 	return func(m *Model) error {
-		fd, ok := m.fields[field]
+		fd, ok := m.fieldsMap[field]
 		if !ok {
-			return errs.NewErrUnkonownField(field)
+			return errs.NewErrUnknownField(field)
 		}
 		fd.colName = colName
 		return nil

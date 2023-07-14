@@ -52,9 +52,9 @@ func (b *builder) buildExpression(expr Expression) error {
 		}
 	case Column:
 		b.sb.WriteByte('`')
-		fd, ok := b.model.fields[exp.name]
+		fd, ok := b.model.fieldsMap[exp.name]
 		if !ok {
-			return errs.NewErrUnkonownField(exp.name)
+			return errs.NewErrUnknownField(exp.name)
 		}
 		b.sb.WriteString(fd.colName)
 		b.sb.WriteByte('`')

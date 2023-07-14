@@ -2,7 +2,9 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 	"go-train/orm/internal/errs"
+	"reflect"
 	"strings"
 )
 
@@ -23,19 +25,85 @@ func NewSelector[T any](db *DB) *Selector[T] {
 }
 
 func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
-	//TODO implement me
-	panic("implement me")
+	q, err := s.Build()
+	if err != nil {
+		return nil, err
+	}
+	// 处理结果集
+	db := s.db.db
+	rows, err := db.QueryContext(ctx, q.Sql, q.Args...)
+	if err != nil {
+		return nil, err
+	}
+	if !rows.Next() {
+		return nil, ErrNoRows
+	}
+	// 获取到 select {} from 的字段
+	cs, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	return s.parseRowsResult(rows, cs)
+}
+
+func (s *Selector[T]) parseRowsResult(rows *sql.Rows, columns []string) (*T, error) {
+	vals := make([]any, 0, len(columns))
+	valElems := make([]reflect.Value, 0, len(columns))
+	for _, c := range columns {
+		// c 是列名
+		fd, ok := s.model.columnMap[c]
+		if !ok {
+			return nil, errs.NewErrUnknownColumn(c)
+		}
+		// 反射创建了一个新的实例
+		val := reflect.New(fd.typ)
+		vals = append(vals, val.Interface())
+		valElems = append(valElems, val.Elem())
+	}
+
+	err := rows.Scan(vals...)
+	if err != nil {
+		return nil, err
+	}
+	tp := new(T)
+	tpValue := reflect.ValueOf(tp)
+	for i, c := range columns {
+		fd, ok := s.model.columnMap[c]
+		if !ok {
+			return nil, errs.NewErrUnknownColumn(c)
+		}
+		tpValue.Elem().FieldByName(fd.goName).Set(valElems[i])
+	}
+	return tp, nil
 }
 
 func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
-	//TODO implement me
-	panic("implement me")
+	q, err := s.Build()
+	if err != nil {
+		return nil, err
+	}
+	// 处理结果集
+	db := s.db.db
+	rows, err := db.QueryContext(ctx, q.Sql, q.Args...)
+	result := make([]*T, 0)
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		res, err := s.parseRowsResult(rows, columns)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, res)
+	}
+	return result, nil
 }
 
 func (s *Selector[T]) Build() (*Query, error) {
 	s.sb = &strings.Builder{}
 	var err error
-	s.db, err = NewDB()
 	m, err := s.db.r.Get(new(T))
 	if err != nil {
 		return nil, err
@@ -100,9 +168,9 @@ func (s *Selector[T]) buildExpression(expr Expression) error {
 		}
 	case Column:
 		s.sb.WriteByte('`')
-		fd, ok := s.model.fields[exp.name]
+		fd, ok := s.model.fieldsMap[exp.name]
 		if !ok {
-			return errs.NewErrUnkonownField(exp.name)
+			return errs.NewErrUnknownField(exp.name)
 		}
 		s.sb.WriteString(fd.colName)
 		s.sb.WriteByte('`')

@@ -27,7 +27,7 @@ func Test_Register(t *testing.T) {
 			entity: &TestModel{},
 			wantModel: &Model{
 				tableName: "test_model",
-				fields: map[string]*Field{
+				fieldsMap: map[string]*Field{
 					"Id": {
 						colName: "id",
 					},
@@ -85,7 +85,7 @@ func TestModelWithColumnName(t *testing.T) {
 			field:   "xxxx",
 			colName: "AGE",
 
-			wantErr: errs.NewErrUnkonownField("xxxx"),
+			wantErr: errs.NewErrUnknownField("xxxx"),
 		},
 	}
 
@@ -97,7 +97,7 @@ func TestModelWithColumnName(t *testing.T) {
 			if err != nil {
 				return
 			}
-			fd, ok := register.fields[tc.field]
+			fd, ok := register.fieldsMap[tc.field]
 			require.True(t, ok)
 			assert.Equal(t, tc.wantColName, fd.colName)
 		})

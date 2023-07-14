@@ -41,6 +41,15 @@ func (left Column) Eq(arg any) Predicate {
 	}
 }
 
+// LT <
+func (left Column) LT(arg any) Predicate {
+	return Predicate{
+		left:  left,
+		op:    opLT,
+		right: value{val: arg},
+	}
+}
+
 func Not(right Predicate) Predicate {
 	return Predicate{
 		op:    opNot,
