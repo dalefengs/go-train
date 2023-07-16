@@ -6,9 +6,9 @@ import (
 )
 
 type builder struct {
-	sb    *strings.Builder
-	model *Model
-	args  []any
+	core
+	sb   *strings.Builder
+	args []any
 }
 
 func (b *builder) buildPredicates(ps []Predicate) error {

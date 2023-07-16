@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"context"
 	"database/sql"
 	"sync"
 )
@@ -41,4 +42,20 @@ func MustOpen(driver string, dsn string, opts ...DBOption) *DB {
 		return nil
 	}
 	return db
+}
+
+func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+	tx, err := db.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return &Tx{tx: tx}, nil
+}
+
+func (db *DB) queryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return db.db.QueryContext(ctx, query, args...)
+}
+
+func (db *DB) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return db.db.ExecContext(ctx, query, args...)
 }
