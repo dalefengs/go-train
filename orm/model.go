@@ -31,6 +31,7 @@ type Field struct {
 	goName  string       // 字段名
 	colName string       // 列名
 	typ     reflect.Type // 字段类型
+	offset  uintptr      // 字段偏移量
 }
 
 type registry struct {
@@ -84,6 +85,7 @@ func (r *registry) Register(entity any, opts ...ModelOption) (*Model, error) {
 			goName:  fd.Name,
 			colName: columnName,
 			typ:     fd.Type,
+			offset:  fd.Offset,
 		}
 		fieldMap[fd.Name] = fdMeta
 		columnMap[columnName] = fdMeta

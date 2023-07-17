@@ -6,6 +6,7 @@ import (
 	"go-train/orm/internal/errs"
 	"reflect"
 	"strings"
+	"unsafe"
 )
 
 type Selector[T any] struct {
@@ -68,13 +69,18 @@ func (s *Selector[T]) parseRowsResult(rows *sql.Rows, columns []string) (*T, err
 	}
 	tp := new(T)
 	tpValue := reflect.ValueOf(tp)
+	// 其实地址
+	address := reflect.ValueOf(tp).UnsafePointer()
 	for i, c := range columns {
 		fd, ok := s.model.columnMap[c]
 		if !ok {
 			return nil, errs.NewErrUnknownColumn(c)
 		}
-		tpValue.Elem().FieldByName(fd.goName).Set(valElems[i])
+		fdAddress := unsafe.Pointer(uintptr(address) + fd.offset)
+		val := reflect.NewAt(fd.typ, fdAddress)
+		vals = append(vals, val.Interface())
 	}
+	err = rows.Scan(vals)
 	return tp, nil
 }
 
