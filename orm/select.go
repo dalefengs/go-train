@@ -68,10 +68,9 @@ func (s *Selector[T]) parseRowsResult(rows *sql.Rows, columns []string) (*T, err
 		return nil, err
 	}
 	tp := new(T)
-	tpValue := reflect.ValueOf(tp)
 	// 其实地址
 	address := reflect.ValueOf(tp).UnsafePointer()
-	for i, c := range columns {
+	for _, c := range columns {
 		fd, ok := s.model.columnMap[c]
 		if !ok {
 			return nil, errs.NewErrUnknownColumn(c)
