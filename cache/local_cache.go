@@ -19,14 +19,22 @@ type item struct {
 }
 
 type BuildInMapCache struct {
-	data  map[string]*item
-	mutex sync.RWMutex
-	close chan struct{}
+	data      map[string]*item
+	mutex     sync.RWMutex
+	close     chan struct{}
+	onEvicted func(key string, val any)
 }
 
-func NewBuildInMapCache(interval time.Duration) *BuildInMapCache {
+type BuildInMapCacheOption func(cache *BuildInMapCache)
+
+func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *BuildInMapCache {
 	res := &BuildInMapCache{
-		data: make(map[string]*item, 100),
+		data:      make(map[string]*item, 100),
+		close:     make(chan struct{}),
+		onEvicted: func(key string, val any) {},
+	}
+	for _, opt := range opts {
+		opt(res)
 	}
 	go func() {
 		ticker := time.NewTicker(interval)
@@ -42,7 +50,7 @@ func NewBuildInMapCache(interval time.Duration) *BuildInMapCache {
 						}
 						// 设置了过期时间
 						if !val.deadline.IsZero() && val.deadline.Before(t) {
-							delete(res.data, key)
+							res.delete(key)
 						}
 						i++
 					}
@@ -54,6 +62,12 @@ func NewBuildInMapCache(interval time.Duration) *BuildInMapCache {
 		}
 	}()
 	return res
+}
+
+func WithEvictedCallback(fn func(key string, val any)) BuildInMapCacheOption {
+	return func(cache *BuildInMapCache) {
+		cache.onEvicted = fn
+	}
 }
 
 func (b *BuildInMapCache) Get(ctx context.Context, key string) (any, error) {
@@ -98,6 +112,15 @@ func (b *BuildInMapCache) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
+func (b *BuildInMapCache) delete(key string) {
+	itm, ok := b.data[key]
+	if !ok {
+		return
+	}
+	delete(b.data, key)
+	b.onEvicted(key, itm)
+}
+
 func (b *BuildInMapCache) Close(ctx context.Context, key string) error {
 	select {
 	case b.close <- struct{}{}:
@@ -109,5 +132,5 @@ func (b *BuildInMapCache) Close(ctx context.Context, key string) error {
 
 // 是否过期
 func (i *item) deadlineBefore(t time.Time) bool {
-	return i.deadline.IsZero() && i.deadline.Before(t)
+	return !i.deadline.IsZero() && i.deadline.Before(t)
 }
