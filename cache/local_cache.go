@@ -18,6 +18,7 @@ type item struct {
 	deadline time.Time
 }
 
+// BuildInMapCache 高性能的本地缓存
 type BuildInMapCache struct {
 	data      map[string]*item
 	mutex     sync.RWMutex
@@ -36,6 +37,8 @@ func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *
 	for _, opt := range opts {
 		opt(res)
 	}
+
+	// 启动清理过期的 goroutine
 	go func() {
 		ticker := time.NewTicker(interval)
 		for {
@@ -64,6 +67,7 @@ func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *
 	return res
 }
 
+// WithEvictedCallback 设置一个回调函数，当缓存条目被驱逐时调用该函数
 func WithEvictedCallback(fn func(key string, val any)) BuildInMapCacheOption {
 	return func(cache *BuildInMapCache) {
 		cache.onEvicted = fn
